@@ -9,6 +9,8 @@ package htmldef
 type TagType int
 
 const (
+	TextType TagType = -1
+	
 	// void elements
 	BRTag TagType = iota
 	IMGTag
@@ -18,11 +20,19 @@ const (
 	PARAMTag
 	
 	ATag
+	ADDRESSTag
+	ARTICLETag
+	ASIDETag
 	BTag
+	BLOCKQUOTETag
 	BODYTag
 	BUTTONTag
+	DDTag
 	DIVTag
+	DLTag
+	DTTag
 	EMBEDTag
+	FIELDSETTag
 	FOOTERTag
 	FORMTag
 	H1Tag
@@ -32,18 +42,30 @@ const (
 	H5Tag
 	H6Tag
 	HEADTag
+	HEADERTag
+	HGROUPTag
+	HRTag
 	HTMLTag
 	LABELTag
 	LITag
+	MAINTag
 	NAVTag
 	NOSCRIPTTag
 	OBJECTTag
 	OLTag
 	PTag
 	PRETag
+	RBTag
+	RPTag
+	RTTag
+	RTCTag
+	RUBYTag
 	SCRIPTTag
+	SECTIONTag
 	SMALLTag
 	SPANTag
+	TABLETag
+	TEMPLATETag
 	TEXTAREATag
 	TITLETag
 	ULTag
@@ -55,40 +77,61 @@ const (
 TagBytes is a map from a TagType to tag name's bytes.
 */
 var TagBytes = [][]byte {
-	HTMLTag:     []byte("html"),
-	HEADTag:     []byte("head"),
-	BODYTag:     []byte("body"),
-	METATag:     []byte("meta"),
-	TITLETag:    []byte("title"),
+	BRTag:       []byte("br"),
+	IMGTag:      []byte("img"),
+	INPUTTag:    []byte("input"),
 	LINKTag:     []byte("link"),
+	METATag:     []byte("meta"),
+	PARAMTag:    []byte("param"),
+	
+	ATag:        []byte("a"),
+	ADDRESSTag:  []byte("address"),
+	ARTICLETag:  []byte("article"),
+	ASIDETag:    []byte("aside"),
+	BTag:        []byte("b"),
+	BLOCKQUOTETag: []byte("blockquote"),
+	BODYTag:     []byte("body"),
+	BUTTONTag:   []byte("button"),
+	DDTag:       []byte("dd"),
+	DIVTag:      []byte("div"),
+	DLTag:       []byte("dl"),
+	DTTag:       []byte("dt"),
+	EMBEDTag:    []byte("embed"),
+	FORMTag:     []byte("form"),
+	FIELDSETTag: []byte("filedset"),
+	FOOTERTag:   []byte("footer"),
 	H1Tag:       []byte("h1"),
 	H2Tag:       []byte("h2"),
 	H3Tag:       []byte("h3"),
 	H4Tag:       []byte("h4"),
 	H5Tag:       []byte("h5"),
 	H6Tag:       []byte("h6"),
-	DIVTag:      []byte("div"),
+	HEADTag:     []byte("head"),
+	HEADERTag:   []byte("header"),
+	HGROUPTag:   []byte("hgroup"),
+	HRTag:       []byte("hr"),
+	HTMLTag:     []byte("html"),
+	LABELTag:    []byte("label"),
+	LITag:       []byte("li"),
+	MAINTag:     []byte("main"),
+	NAVTag:      []byte("nav"),
+	NOSCRIPTTag: []byte("noscript"),
+	OBJECTTag:   []byte("object"),
+	OLTag:       []byte("ol"),
 	PTag:        []byte("p"),
 	PRETag:      []byte("pre"),
-	SPANTag:     []byte("span"),
-	IMGTag:      []byte("img"),
-	ATag:        []byte("a"),
-	SMALLTag:    []byte("small"),
-	BTag:        []byte("b"),
-	ULTag:       []byte("ul"),
-	LITag:       []byte("li"),
-	OLTag:       []byte("ol"),
-	FORMTag:     []byte("form"),
-	LABELTag:    []byte("label"),
-	INPUTTag:    []byte("input"),
-	BUTTONTag:   []byte("button"),
-	TEXTAREATag: []byte("textarea"),
+	RBTag:       []byte("rb"),
+	RPTag:       []byte("rp"),
+	RTTag:       []byte("rt"),
+	RTCTag:      []byte("rtc"),
+	RUBYTag:     []byte("ruby"),
 	SCRIPTTag:   []byte("script"),
-	NOSCRIPTTag: []byte("noscript"),
-	BRTag:       []byte("br"),
-	OBJECTTag:   []byte("object"),
-	PARAMTag:    []byte("param"),
-	EMBEDTag:    []byte("embed"),
-	NAVTag:      []byte("nav"),
-	FOOTERTag:   []byte("footer"),
+	SECTIONTag:  []byte("section"),
+	SMALLTag:    []byte("small"),
+	SPANTag:     []byte("span"),
+	TABLETag:    []byte("table"),
+	TEXTAREATag: []byte("textarea"),
+	TEMPLATETag: []byte("template"),
+	TITLETag:    []byte("title"),
+	ULTag:       []byte("ul"),
 }

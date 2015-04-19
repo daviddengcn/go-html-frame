@@ -22,7 +22,8 @@ type RenderOptions struct {
 var Default = RenderOptions{}
 
 type Node interface {
-	WriteTo(b Writer, parent Node, opt RenderOptions)
+	Type() TagType
+	WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int)
 }
 
 type Writer interface {
@@ -40,13 +41,17 @@ func (h HTMLBytes) String() string {
 	return string(h)
 }
 
-func (h HTMLBytes) WriteTo(b Writer, parent Node, opt RenderOptions) {
+func (h HTMLBytes) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
 	b.Write([]byte(h))
+}
+
+func (h HTMLBytes) Type() TagType {
+	return TextType
 }
 
 func NodeToHTMLBytes(el Node, opt RenderOptions) HTMLBytes {
 	var b villa.ByteSlice
-	el.WriteTo(&b, nil, opt)
+	el.WriteTo(&b, opt, nil, 0)
 	return HTMLBytes(b)
 }
 
@@ -89,16 +94,29 @@ func (attrs Attributes) WriteTo(b Writer, sortAttr bool) {
 
 // An HTML void element
 type Void struct {
-	Type       TagType
+	tagType       TagType
 	attributes Attributes
 	classes    []HTMLBytes
 }
 
 var _ Node = (*Void)(nil)
 
-func (v *Void) WriteTo(b Writer, parent Node, opt RenderOptions) {
+func (v *Void) Type() TagType {
+	return v.tagType
+}
+
+// Implementation of Node.WriteTo. This will be called to generate open tags of both void and normal elements
+func (v *Void) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
+	if !opt.DisableOmit && len(v.attributes) == 0 && len(v.classes) == 0 {
+		// check omission if no attributes, this part only cover the cases without checking its children
+		switch v.tagType {
+		case HTMLTag, HEADTag:
+			return
+		}
+	}
+	
 	b.WriteByte('<')
-	b.Write(TagBytes[v.Type])
+	b.Write(TagBytes[v.tagType])
 
 	if len(v.classes) > 0 {
 		b.WriteString(` class="`)
@@ -112,6 +130,10 @@ func (v *Void) WriteTo(b Writer, parent Node, opt RenderOptions) {
 	v.attributes.WriteTo(b, opt.SortAttr)
 
 	b.WriteByte('>')
+}
+
+func (v *Void) Name() HTMLBytes {
+	return HTMLBytes(TagBytes[v.tagType])
 }
 
 func (v *Void) Attr(name string, value string) *Void {
@@ -141,6 +163,13 @@ func (v *Void) Attr(name string, value string) *Void {
 	}
 	v.attributes[name] = attrEscaper(value)
 	return v
+}
+
+func (v *Void) NonEmptyAttr(name, value string) *Void {
+	if value == "" {
+		return v
+	}
+	return v.Attr(name, value)
 }
 
 func findStrInArr(s HTMLBytes, arr []HTMLBytes) int {
@@ -189,16 +218,17 @@ type Element struct {
 
 var _ Node = (*Element)(nil)
 
-func (t *Element) Name() HTMLBytes {
-	return HTMLBytes(TagBytes[t.Type])
-}
-
 func (t *Element) Children() []Element {
 	return t.Children()
 }
 
 func (e *Element) Attr(name string, value string) *Element {
 	e.Void.Attr(name, value)
+	return e
+}
+
+func (e *Element) NonEmptyAttr(name string, value string) *Element {
+	e.Void.NonEmptyAttr(name, value)
 	return e
 }
 
@@ -212,8 +242,8 @@ func (t *Element) T(txt string) *Element {
 	return t.Child(T(txt))
 }
 
-func newNewLine(e *Element) bool {
-	switch e.Type {
+func shouldNewLine(e *Element) bool {
+	switch e.tagType {
 	case PRETag, TEXTAREATag:
 		if len(e.children) == 0 {
 			return false
@@ -231,18 +261,138 @@ func newNewLine(e *Element) bool {
 	return false
 }
 
-func (e *Element) WriteTo(b Writer, parent Node, opt RenderOptions) {
-	// TODO omit and indent
-	// Write the open tag including attributes
-	e.Void.WriteTo(b, parent, opt)
+func isSpaceCharacters(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\f' || b == '\r'
+}
 
-	if newNewLine(e) {
+func canOmitStartTag(parent *Element, e *Element) bool {
+	switch e.Type() {
+	case BODYTag:
+		if len(e.children) == 0 {
+			return true
+		}
+		switch e.children[0].Type() {
+		case TextType:
+			txt := e.children[0].(HTMLBytes)
+			if len(txt) == 0 {
+				return true
+			}
+			
+			return !isSpaceCharacters(txt[0])
+			
+		case METATag, LINKTag, SCRIPTTag, TEMPLATETag:
+			return false
+		}
+		return true
+	}
+	
+	return false
+}
+
+var pOmittedAfter = []bool {
+	ADDRESSTag: true,
+	ARTICLETag: true,
+	ASIDETag: true,
+	BLOCKQUOTETag: true,
+	DIVTag: true,
+	DLTag: true,
+	FIELDSETTag: true,
+	FOOTERTag: true,
+	FORMTag: true,
+	H1Tag: true,
+	H2Tag: true,
+	H3Tag: true,
+	H4Tag: true,
+	H5Tag: true,
+	H6Tag: true,
+	HEADERTag: true,
+	HGROUPTag: true,
+	HRTag: true,
+	MAINTag: true,
+	NAVTag: true,
+	OLTag: true,
+	PTag: true,
+	PRETag: true,
+	SECTIONTag: true,
+	TABLETag: true,
+	ULTag: true,
+}
+
+func canOmitEndTag(e, parent *Element, childIndex int) bool {
+	switch tp := e.Type(); tp {
+	case HTMLTag, HEADTag, BODYTag:
+		return true
+		
+	case LITag:
+		if parent == nil {
+			return false
+		}
+		if childIndex == len(parent.children)-1 {
+			return true
+		}
+		if parent.children[childIndex + 1].Type() == LITag {
+			return true
+		}
+		
+	case DTTag, DDTag:
+		if childIndex == len(parent.children)-1 {
+			return tp == DDTag
+		}
+		switch parent.children[childIndex + 1].Type() {
+		case DTTag, DDTag:
+			return true
+		}
+		
+	case PTag:
+		if childIndex == len(parent.children)-1 {
+			return parent.Type() != ATag
+		}
+		
+		nextTp := parent.children[childIndex + 1].Type()
+		if nextTp < 0 || int(nextTp) >= len(pOmittedAfter) {
+			return false
+		}
+		return pOmittedAfter[nextTp]
+		
+	case RBTag, RTTag, RTCTag, RPTag:
+		if childIndex == len(parent.children)-1 {
+			return true
+		}
+		
+		switch parent.children[childIndex + 1].Type() {
+		case RBTag, RTCTag, RPTag:
+			return true
+		case RTTag:
+			return tp != RTCTag  
+		}
+	}
+	
+	return false
+}
+
+func (e *Element) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
+	// TODO omit and indent
+	if opt.DisableOmit || !canOmitStartTag(parent, e) {
+		// Write the open tag including attributes
+		e.Void.WriteTo(b, opt, parent, childIndex)
+	}
+
+	if shouldNewLine(e) {
 		b.WriteByte('\n')
 	}
 
-	for _, child := range e.children {
-		child.WriteTo(b, e, opt)
+	for i, child := range e.children {
+		child.WriteTo(b, opt, e, i)
 	}
+	
+	if !opt.DisableOmit && canOmitEndTag(e, parent, childIndex) {
+		return
+	}
+	
+	b.WriteByte('<')
+	b.WriteByte('/')
+	b.Write(TagBytes[e.tagType])
+	b.WriteByte('>')
 }
 
 func T(text string) HTMLBytes {
@@ -261,13 +411,19 @@ type Html struct {
 	Element
 }
 
-var _ Node = (*Html)(nil)
+var _ Node = Html{}
 
-func (h Html) WriteTo(b Writer, parent Node, opt RenderOptions) {
-	doctypeBytes.WriteTo(b, parent, opt)
+// Implementation of Node interface
+func (h Html) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
+	b.Write(doctypeBytes)
 	b.WriteByte('\n')
 
-	h.Element.WriteTo(b, h, opt)
+	h.Element.WriteTo(b, opt, parent, childIndex)
+}
+
+// Implementation of Node interface
+func (h Html) Type() TagType {
+	return HTMLTag
 }
 
 func (h Html) Head() *Element {
@@ -276,6 +432,11 @@ func (h Html) Head() *Element {
 
 func (h Html) Body() *Element {
 	return h.children[1].(*Element)
+}
+
+func (h Html) Lang(lang string) Html {
+	h.NonEmptyAttr("lang", lang)
+	return h
 }
 
 func (h Html) Title(title string) Html {
