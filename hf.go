@@ -94,7 +94,7 @@ func (attrs Attributes) WriteTo(b Writer, sortAttr bool) {
 
 // An HTML void element
 type Void struct {
-	tagType       TagType
+	tagType    TagType
 	attributes Attributes
 	classes    []HTMLBytes
 }
@@ -107,14 +107,6 @@ func (v *Void) Type() TagType {
 
 // Implementation of Node.WriteTo. This will be called to generate open tags of both void and normal elements
 func (v *Void) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
-	if !opt.DisableOmit && len(v.attributes) == 0 && len(v.classes) == 0 {
-		// check omission if no attributes, this part only cover the cases without checking its children
-		switch v.tagType {
-		case HTMLTag, HEADTag:
-			return
-		}
-	}
-	
 	b.WriteByte('<')
 	b.Write(TagBytes[v.tagType])
 
@@ -232,14 +224,28 @@ func (e *Element) NonEmptyAttr(name string, value string) *Element {
 	return e
 }
 
-func (t *Element) Child(el ...Node) *Element {
-	t.children = append(t.children, el...)
+func (e *Element) Child(el ...Node) *Element {
+	e.children = append(e.children, el...)
 
-	return t
+	return e
 }
 
-func (t *Element) T(txt string) *Element {
-	return t.Child(T(txt))
+func (e *Element) ChildEls(els ...*Element) *Element {
+	for _, el := range els {
+		e.children = append(e.children, el)
+	}
+	return e
+}
+
+func (e *Element) ChildVoids(vs ...*Void) *Element {
+	for _, v := range vs {
+		e.children = append(e.children, v)
+	}
+	return e
+}
+
+func (e *Element) T(txt string) *Element {
+	return e.Child(T(txt))
 }
 
 func shouldNewLine(e *Element) bool {
@@ -265,64 +271,107 @@ func isSpaceCharacters(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\n' || b == '\f' || b == '\r'
 }
 
-func canOmitStartTag(parent *Element, e *Element) bool {
-	switch e.Type() {
+func startWithSpace(txt HTMLBytes) bool {
+	if len(txt) == 0 {
+		return false
+	}
+
+	return !isSpaceCharacters(txt[0])
+}
+
+func (e *Element) canOmitStartTag(parent *Element, childIndex int) bool {
+	if len(e.attributes) > 0 || len(e.classes) > 0 {
+		return false
+	}
+
+	switch e.tagType {
+	case HTMLTag, HEADTag:
+		return true
+
 	case BODYTag:
 		if len(e.children) == 0 {
 			return true
 		}
 		switch e.children[0].Type() {
 		case TextType:
-			txt := e.children[0].(HTMLBytes)
-			if len(txt) == 0 {
-				return true
-			}
-			
-			return !isSpaceCharacters(txt[0])
-			
+			return !startWithSpace(e.children[0].(HTMLBytes))
+
 		case METATag, LINKTag, SCRIPTTag, TEMPLATETag:
 			return false
 		}
 		return true
+
+	case COLGROUPTag:
+		if len(e.children) == 0 {
+			return false
+		}
+
+		if e.children[0].Type() != COLTag {
+			return false
+		}
+
+		if childIndex > 0 && parent != nil && parent.children[childIndex-1].Type() == COLGROUPTag {
+			return false
+		}
+
+		return true
+
+	case TBODYTag:
+		if len(e.children) == 0 {
+			return false
+		}
+
+		if e.children[0].Type() != TRTag {
+			return false
+		}
+
+		if childIndex > 0 && parent != nil {
+			switch parent.children[childIndex-1].Type() {
+			case TBODYTag, THEADTag, TFOOTTag:
+				return false
+			}
+		}
+
+		return true
 	}
-	
+
 	return false
 }
 
-var pOmittedAfter = []bool {
-	ADDRESSTag: true,
-	ARTICLETag: true,
-	ASIDETag: true,
+var pOmittedAfter = []bool{
+	ADDRESSTag:    true,
+	ARTICLETag:    true,
+	ASIDETag:      true,
 	BLOCKQUOTETag: true,
-	DIVTag: true,
-	DLTag: true,
-	FIELDSETTag: true,
-	FOOTERTag: true,
-	FORMTag: true,
-	H1Tag: true,
-	H2Tag: true,
-	H3Tag: true,
-	H4Tag: true,
-	H5Tag: true,
-	H6Tag: true,
-	HEADERTag: true,
-	HGROUPTag: true,
-	HRTag: true,
-	MAINTag: true,
-	NAVTag: true,
-	OLTag: true,
-	PTag: true,
-	PRETag: true,
-	SECTIONTag: true,
-	TABLETag: true,
-	ULTag: true,
+	DIVTag:        true,
+	DLTag:         true,
+	FIELDSETTag:   true,
+	FOOTERTag:     true,
+	FORMTag:       true,
+	H1Tag:         true,
+	H2Tag:         true,
+	H3Tag:         true,
+	H4Tag:         true,
+	H5Tag:         true,
+	H6Tag:         true,
+	HEADERTag:     true,
+	HGROUPTag:     true,
+	HRTag:         true,
+	MAINTag:       true,
+	NAVTag:        true,
+	OLTag:         true,
+	PTag:          true,
+	PRETag:        true,
+	SECTIONTag:    true,
+	TABLETag:      true,
+	ULTag:         true,
 }
 
-func canOmitEndTag(e, parent *Element, childIndex int) bool {
+func (e *Element) canOmitEndTag(parent *Element, childIndex int) bool {
 	switch tp := e.Type(); tp {
 	case HTMLTag, HEADTag, BODYTag:
 		return true
-		
+
 	case LITag:
 		if parent == nil {
 			return false
@@ -330,49 +379,112 @@ func canOmitEndTag(e, parent *Element, childIndex int) bool {
 		if childIndex == len(parent.children)-1 {
 			return true
 		}
-		if parent.children[childIndex + 1].Type() == LITag {
+		if parent.children[childIndex+1].Type() == LITag {
 			return true
 		}
-		
+
 	case DTTag, DDTag:
 		if childIndex == len(parent.children)-1 {
 			return tp == DDTag
 		}
-		switch parent.children[childIndex + 1].Type() {
+		switch parent.children[childIndex+1].Type() {
 		case DTTag, DDTag:
 			return true
 		}
-		
+
 	case PTag:
 		if childIndex == len(parent.children)-1 {
 			return parent.Type() != ATag
 		}
-		
-		nextTp := parent.children[childIndex + 1].Type()
+
+		nextTp := parent.children[childIndex+1].Type()
 		if nextTp < 0 || int(nextTp) >= len(pOmittedAfter) {
 			return false
 		}
 		return pOmittedAfter[nextTp]
-		
+
 	case RBTag, RTTag, RTCTag, RPTag:
 		if childIndex == len(parent.children)-1 {
 			return true
 		}
-		
-		switch parent.children[childIndex + 1].Type() {
+
+		switch parent.children[childIndex+1].Type() {
 		case RBTag, RTCTag, RPTag:
 			return true
 		case RTTag:
-			return tp != RTCTag  
+			return tp != RTCTag
+		}
+
+	case OPTGROUPTag, OPTIONTag:
+		if childIndex == len(parent.children)-1 {
+			return true
+		}
+
+		switch parent.children[childIndex+1].Type() {
+		case OPTGROUPTag:
+			return true
+		case OPTIONTag:
+			return tp == OPTIONTag
+		}
+
+	case COLGROUPTag:
+		if childIndex == len(parent.children)-1 {
+			return true
+		}
+
+		if parent.children[childIndex+1].Type() == TextType {
+			return !startWithSpace(e.children[childIndex+1].(HTMLBytes))
+		}
+
+		return true
+
+	case THEADTag:
+		if childIndex == len(parent.children)-1 {
+			return false
+		}
+
+		switch parent.children[childIndex+1].Type() {
+		case TBODYTag, TFOOTTag:
+			return true
+		}
+
+	case TBODYTag, TFOOTTag:
+		if childIndex == len(parent.children)-1 {
+			return true
+		}
+
+		switch parent.children[childIndex+1].Type() {
+		case TBODYTag:
+			return true
+
+		case TFOOTTag:
+			return tp == TBODYTag
+		}
+
+	case TRTag:
+		if childIndex == len(parent.children)-1 {
+			return true
+		}
+
+		return parent.children[childIndex+1].Type() == TRTag
+
+	case THTag, TDTag:
+		if childIndex == len(parent.children)-1 {
+			return true
+		}
+
+		switch parent.children[childIndex+1].Type() {
+		case THTag, TDTag:
+			return true
 		}
 	}
-	
+
 	return false
 }
 
 func (e *Element) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
 	// TODO omit and indent
-	if opt.DisableOmit || !canOmitStartTag(parent, e) {
+	if opt.DisableOmit || !e.canOmitStartTag(parent, childIndex) {
 		// Write the open tag including attributes
 		e.Void.WriteTo(b, opt, parent, childIndex)
 	}
@@ -384,11 +496,11 @@ func (e *Element) WriteTo(b Writer, opt RenderOptions, parent *Element, childInd
 	for i, child := range e.children {
 		child.WriteTo(b, opt, e, i)
 	}
-	
-	if !opt.DisableOmit && canOmitEndTag(e, parent, childIndex) {
+
+	if !opt.DisableOmit && e.canOmitEndTag(parent, childIndex) {
 		return
 	}
-	
+
 	b.WriteByte('<')
 	b.WriteByte('/')
 	b.Write(TagBytes[e.tagType])

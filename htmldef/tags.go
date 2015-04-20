@@ -8,11 +8,11 @@ package htmldef
  */
 type TagType int
 
+const TextType TagType = -1
 const (
-	TextType TagType = -1
-	
 	// void elements
 	BRTag TagType = iota
+	COLTag
 	IMGTag
 	INPUTTag
 	LINKTag
@@ -27,6 +27,7 @@ const (
 	BLOCKQUOTETag
 	BODYTag
 	BUTTONTag
+	COLGROUPTag
 	DDTag
 	DIVTag
 	DLTag
@@ -53,6 +54,8 @@ const (
 	NOSCRIPTTag
 	OBJECTTag
 	OLTag
+	OPTGROUPTag
+	OPTIONTag
 	PTag
 	PRETag
 	RBTag
@@ -62,12 +65,19 @@ const (
 	RUBYTag
 	SCRIPTTag
 	SECTIONTag
+	SELECTTag
 	SMALLTag
 	SPANTag
 	TABLETag
+	TBODYTag
+	TDTag
 	TEMPLATETag
 	TEXTAREATag
+	TFOOTTag
+	THTag
+	THEADTag
 	TITLETag
+	TRTag
 	ULTag
 	
 	tagCount
@@ -78,6 +88,7 @@ TagBytes is a map from a TagType to tag name's bytes.
 */
 var TagBytes = [][]byte {
 	BRTag:       []byte("br"),
+	COLTag:      []byte("col"),
 	IMGTag:      []byte("img"),
 	INPUTTag:    []byte("input"),
 	LINKTag:     []byte("link"),
@@ -92,6 +103,7 @@ var TagBytes = [][]byte {
 	BLOCKQUOTETag: []byte("blockquote"),
 	BODYTag:     []byte("body"),
 	BUTTONTag:   []byte("button"),
+	COLGROUPTag: []byte("colgroup"),
 	DDTag:       []byte("dd"),
 	DIVTag:      []byte("div"),
 	DLTag:       []byte("dl"),
@@ -118,6 +130,8 @@ var TagBytes = [][]byte {
 	NOSCRIPTTag: []byte("noscript"),
 	OBJECTTag:   []byte("object"),
 	OLTag:       []byte("ol"),
+	OPTGROUPTag: []byte("optgroup"),
+	OPTIONTag:   []byte("option"),
 	PTag:        []byte("p"),
 	PRETag:      []byte("pre"),
 	RBTag:       []byte("rb"),
@@ -127,11 +141,18 @@ var TagBytes = [][]byte {
 	RUBYTag:     []byte("ruby"),
 	SCRIPTTag:   []byte("script"),
 	SECTIONTag:  []byte("section"),
+	SELECTTag:   []byte("select"),
 	SMALLTag:    []byte("small"),
 	SPANTag:     []byte("span"),
 	TABLETag:    []byte("table"),
+	TBODYTag:    []byte("tbody"),
+	TDTag:       []byte("td"),
 	TEXTAREATag: []byte("textarea"),
 	TEMPLATETag: []byte("template"),
+	TFOOTTag:    []byte("tfoot"),
+	THTag:       []byte("th"),
+	THEADTag:    []byte("thead"),
 	TITLETag:    []byte("title"),
+	TRTag:       []byte("tr"),
 	ULTag:       []byte("ul"),
 }

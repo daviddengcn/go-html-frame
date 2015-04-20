@@ -15,6 +15,7 @@ func TestTagBytes(t *testing.T) {
 			if len(last) != 0 {
 				t.Errorf("Bytes for tag after %s is undefined.", string(last))
 			} else {
+				t.Logf("BRTag = %d", BRTag)
 				t.Errorf("Bytes for tag of value %d is undefined.", i)
 			}
 		}
