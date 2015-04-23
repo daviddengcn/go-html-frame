@@ -1,28 +1,73 @@
 package hf
 
 import (
-	"strconv"
-
 	. "github.com/daviddengcn/go-html-frame/htmldef"
 )
 
-// the singleton for all BR tags
-var brTag = Void{
-	tagType: BRTag,
+// The area element
+func AREA(href, alt string, shape string, coords []int) *Void {
+	area := (&Void{
+		tagType: AREATag,
+	}).AttrIfNotEmpty("href", href).AttrIfNotEmpty("alt", alt).AttrIfNotEmpty("shape", shape)
+	if len(coords) > 0 {
+		area.attrOfBytes("coords", intSliceToBytes(coords))
+	}
+	
+	return area
 }
 
+// The base element
+func BASE(href, target string) *Void {
+	return (&Void{
+		tagType: BASETag,
+	}).AttrIfNotEmpty("href", href).AttrIfNotEmpty("target", target)
+}
+
+// The br element
 func BR() *Void {
-	return &brTag
+	return &Void{
+		tagType: BRTag,
+	}
 }
 
+// The col element.
+// span is the number of columns spanned by the element.
 func COL(span int) *Void {
 	col := &Void{
 		tagType: COLTag,
 	}
 	if span > 1 {
-		col.Attr("span", strconv.Itoa(span))
+		col.attrOfBytes("span", itoaBytes(span))
 	}
 	return col
+}
+
+// The embed element.
+//
+// tp is the type attribute. Empty string will be ignored.
+// width or height with a negative value will be ignored.
+func EMBED(src URL, tp string, width, height int) *Void {
+	v := (&Void{
+		tagType: EMBEDTag,
+	}).AttrIfNotEmpty("type", tp)
+
+	v.attrOfBytes("src", HTMLBytes(src))
+	
+	if width >= 0 {
+		v.attrOfBytes("width", itoaBytes(width))
+	}
+	if height >= 0 {
+		v.attrOfBytes("height", itoaBytes(height))
+	}
+
+	return v
+}
+
+// The br element
+func HR() *Void {
+	return &Void{
+		tagType: HRTag,
+	}
 }
 
 func IMG(src string) *Void {
@@ -83,114 +128,16 @@ func A(href string, children ...Node) *Element {
 	return t
 }
 
-func BODY() *Element {
-	return &Element{
-		Void: Void{tagType: BODYTag},
-	}
-}
-
-func HEAD() *Element {
-	return &Element{
-		Void: Void{tagType: HEADTag},
-		children: []Node{
-			META().Attr("charset", "utf-8"),
-			META().Attr("name", "viewport").Attr("content", "initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, width=device-width"),
-		},
-	}
-}
-
-func HTML(lang string) Html {
-	return Html{
-		Element: Element{
-			Void: Void{tagType: HTMLTag},
-			children: []Node{
-				HEAD(),
-				BODY(),
-			},
-		},
-	}.Lang(lang)
-}
-
-func SMALL(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: SMALLTag},
-	}).Child(children...)
-}
-
-func LI(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: LITag},
-	}).Child(children...)
-}
-
-func NAV(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: NAVTag},
-	}).Child(children...)
-}
-
-func FORM(method, action string, children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: FORMTag},
-	}).Attr("method", method).Attr("action", action).Child(children...)
-}
-
-func NOSCRIPT(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: NOSCRIPTTag},
-	}).Child(children...)
-}
-
-func SPAN(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: SPANTag},
-	}).Child(children...)
-}
-
-func FOOTER(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: FOOTERTag},
-	}).Child(children...)
-}
-
-func LABEL(For string, children ...Node) *Element {
-	t := (&Element{
-		Void: Void{tagType: LABELTag},
-	}).Child(children...)
-	if For != "" {
-		t.Attr("for", For)
-	}
-	return t
-}
-
-func TEXTAREA(name, value string, children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: TEXTAREATag},
-	}).Attr("name", name).Attr("value", value).Child(children...)
-}
-
-func P(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: PTag},
-	}).Child(children...)
-}
-
-func OL(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: OLTag},
-	}).Child(children...)
-}
-
-func PRE(children ...Node) *Element {
-	return (&Element{
-		Void: Void{tagType: PRETag},
-	}).Child(children...)
-}
-
 func B(children ...Node) *Element {
 	return (&Element{
 		Void: Void{tagType: BTag},
 	}).Child(children...)
+}
+
+func BODY() *Element {
+	return &Element{
+		Void: Void{tagType: BODYTag},
+	}
 }
 
 func BUTTON(children ...Node) *Element {
@@ -199,10 +146,26 @@ func BUTTON(children ...Node) *Element {
 	}).Child(children...)
 }
 
-func COLGROUP(cols ...*Void) *Element {
+// The caption element
+func CAPTION(children ...Node) *Element {
 	return (&Element{
+		Void: Void{tagType: CAPTIONTag},
+	}).Child(children...)
+}
+
+// The colgroup element
+// 
+// If span > 0, cols are ignored. Otherwise, cols (col tags) are appended as children.
+func COLGROUP(span int, cols ...*Void) *Element {
+	colgroup := &Element{
 		Void: Void{tagType: COLGROUPTag},
-	}).ChildVoids(cols...)
+	}
+	if span > 0 {
+		colgroup.attrOfBytes("span", itoaBytes(span))
+	} else {
+		colgroup.ChildVoids(cols...)
+	}
+	return colgroup
 }
 
 func DD(children ...Node) *Element {
@@ -229,16 +192,16 @@ func DT(children ...Node) *Element {
 	}).Child(children...)
 }
 
-func EMBED(attrs ...string) *Element {
-	var t = Element{
-		Void: Void{tagType: EMBEDTag},
-	}
+func FOOTER(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: FOOTERTag},
+	}).Child(children...)
+}
 
-	for i := 1; i < len(attrs); i += 2 {
-		t.Attr(attrs[i-1], attrs[i])
-	}
-
-	return &t
+func FORM(method, action string, children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: FORMTag},
+	}).Attr("method", method).Attr("action", action).Child(children...)
 }
 
 func H1(children ...Node) *Element {
@@ -277,9 +240,73 @@ func H6(children ...Node) *Element {
 	}).Child(children...)
 }
 
+func HEAD() *Element {
+	return &Element{
+		Void: Void{tagType: HEADTag},
+		children: []Node{
+			META().Attr("charset", "utf-8"),
+		},
+	}
+}
+
+func HTML(lang string) Html {
+	return Html{
+		Element: Element{
+			Void: Void{tagType: HTMLTag},
+			children: []Node{
+				HEAD(),
+				BODY(),
+			},
+		},
+	}.Lang(lang)
+}
+
+func LABEL(For string, children ...Node) *Element {
+	t := (&Element{
+		Void: Void{tagType: LABELTag},
+	}).Child(children...)
+	if For != "" {
+		t.Attr("for", For)
+	}
+	return t
+}
+
+func LI(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: LITag},
+	}).Child(children...)
+}
+
+// The map element.
+func MAP(name string, children ...Node) *Element {
+	mp := (&Element{
+		Void: Void{tagType: MAPTag},
+	}).Child(children...)
+	mp.AttrIfNotEmpty("name", name)
+	return mp
+}
+
+func NAV(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: NAVTag},
+	}).Child(children...)
+}
+
+func NOSCRIPT(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: NOSCRIPTTag},
+	}).Child(children...)
+}
+
 func OBJECT(children ...Node) *Element {
 	return (&Element{
 		Void: Void{tagType: OBJECTTag},
+	}).Child(children...)
+}
+
+func OL(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: OLTag},
 	}).Child(children...)
 }
 
@@ -293,6 +320,18 @@ func OPTION(value, text string) *Element {
 	return (&Element{
 		Void: Void{tagType: OPTIONTag},
 	}).Attr("value", value).Child(T(text))
+}
+
+func P(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: PTag},
+	}).Child(children...)
+}
+
+func PRE(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: PRETag},
+	}).Child(children...)
 }
 
 func RB(children ...Node) *Element {
@@ -344,40 +383,64 @@ func SELECT(children ...*Element) *Element {
 	}).ChildEls(children...)
 }
 
+func SMALL(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: SMALLTag},
+	}).Child(children...)
+}
+
+func SPAN(children ...Node) *Element {
+	return (&Element{
+		Void: Void{tagType: SPANTag},
+	}).Child(children...)
+}
+
+// The table element
 func TABLE(children ...*Element) *Element {
 	return (&Element{
 		Void: Void{tagType: TABLETag},
 	}).ChildEls(children...)
 }
 
-func TBODY(children ...*Element) *Element {
+// The tbody element.
+func TBODY(trs ...*Element) *Element {
 	return (&Element{
 		Void: Void{tagType: TBODYTag},
-	}).ChildEls(children...)
+	}).ChildEls(trs...)
 }
 
+// The td element.
 func TD(children ...Node) *Element {
 	return (&Element{
 		Void: Void{tagType: TDTag},
 	}).Child(children...)
 }
 
-func TFOOT(children ...*Element) *Element {
+func TEXTAREA(name, value string, children ...Node) *Element {
 	return (&Element{
-		Void: Void{tagType: TFOOTTag},
-	}).ChildEls(children...)
+		Void: Void{tagType: TEXTAREATag},
+	}).Attr("name", name).Attr("value", value).Child(children...)
 }
 
+// The tfoot element.
+func TFOOT(trs ...*Element) *Element {
+	return (&Element{
+		Void: Void{tagType: TFOOTTag},
+	}).ChildEls(trs...)
+}
+
+// The th element.
 func TH(children ...Node) *Element {
 	return (&Element{
 		Void: Void{tagType: THTag},
 	}).Child(children...)
 }
 
-func THEAD(children ...*Element) *Element {
+// The thead element.
+func THEAD(trs ...*Element) *Element {
 	return (&Element{
 		Void: Void{tagType: THEADTag},
-	}).ChildEls(children...)
+	}).ChildEls(trs...)
 }
 
 func TITLE(title string) *Element {

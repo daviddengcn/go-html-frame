@@ -6,6 +6,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"strconv"
 
 	. "github.com/daviddengcn/go-html-frame/htmldef"
 	"github.com/daviddengcn/go-villa"
@@ -31,6 +32,8 @@ type Writer interface {
 	io.Writer
 	WriteString(string) (int, error)
 }
+
+type URL []byte
 
 // Text
 type HTMLBytes []byte
@@ -129,15 +132,25 @@ func (v *Void) Name() HTMLBytes {
 }
 
 func (v *Void) Attr(name string, value string) *Void {
+	return v.attrOfBytes(name, attrEscaper(value))
+}
+
+func (v *Void) AttrIfNotEmpty(name, value string) *Void {
+	if value == "" {
+		return v
+	}
+	return v.Attr(name, value)
+}
+
+func (v *Void) attrOfBytes(name string, value HTMLBytes) *Void {
 	if len(name) == 0 {
 		// ignore empty name
 		return v
 	}
 	name = strings.ToLower(name)
 
-	// TODO ignore invalid attribute name
 	if name == "class" {
-		classes := bytes.Split([]byte(attrEscaper(value)), []byte{' '})
+		classes := bytes.Split([]byte(value), []byte{' '})
 
 		v.classes = make([]HTMLBytes, 0, len(classes))
 		for _, class := range classes {
@@ -150,11 +163,20 @@ func (v *Void) Attr(name string, value string) *Void {
 		return v
 	}
 
+	// TODO ignore invalid attribute name
 	if v.attributes == nil {
 		v.attributes = make(Attributes)
 	}
-	v.attributes[name] = attrEscaper(value)
+	v.attributes[name] = value
 	return v
+}
+
+func (v *Void) Title(title string) {
+	v.Attr("title", title)
+}
+
+func (v *Void) TabIndex(tablInex int) {
+	v.Attr("tableindex", strconv.Itoa(tablInex))
 }
 
 func (v *Void) NonEmptyAttr(name, value string) *Void {
@@ -162,16 +184,6 @@ func (v *Void) NonEmptyAttr(name, value string) *Void {
 		return v
 	}
 	return v.Attr(name, value)
-}
-
-func findStrInArr(s HTMLBytes, arr []HTMLBytes) int {
-	for i, el := range arr {
-		if bytes.Equal(el, s) {
-			return i
-		}
-	}
-
-	return -1
 }
 
 func (v *Void) AddClass(classes ...string) *Void {
@@ -265,18 +277,6 @@ func shouldNewLine(e *Element) bool {
 		return t[0] == '\n'
 	}
 	return false
-}
-
-func isSpaceCharacters(b byte) bool {
-	return b == ' ' || b == '\t' || b == '\n' || b == '\f' || b == '\r'
-}
-
-func startWithSpace(txt HTMLBytes) bool {
-	if len(txt) == 0 {
-		return false
-	}
-
-	return !isSpaceCharacters(txt[0])
 }
 
 func (e *Element) canOmitStartTag(parent *Element, childIndex int) bool {

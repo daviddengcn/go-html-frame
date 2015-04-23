@@ -11,8 +11,11 @@ type TagType int
 const TextType TagType = -1
 const (
 	// void elements
-	BRTag TagType = iota
+	AREATag TagType = iota
+	BASETag
+	BRTag
 	COLTag
+	HRTag
 	IMGTag
 	INPUTTag
 	LINKTag
@@ -27,6 +30,7 @@ const (
 	BLOCKQUOTETag
 	BODYTag
 	BUTTONTag
+	CAPTIONTag
 	COLGROUPTag
 	DDTag
 	DIVTag
@@ -45,11 +49,11 @@ const (
 	HEADTag
 	HEADERTag
 	HGROUPTag
-	HRTag
 	HTMLTag
 	LABELTag
 	LITag
 	MAINTag
+	MAPTag
 	NAVTag
 	NOSCRIPTTag
 	OBJECTTag
@@ -87,8 +91,11 @@ const (
 TagBytes is a map from a TagType to tag name's bytes.
 */
 var TagBytes = [][]byte {
+	AREATag:     []byte("area"),
+	BASETag:     []byte("base"),
 	BRTag:       []byte("br"),
 	COLTag:      []byte("col"),
+	HRTag:       []byte("hr"),
 	IMGTag:      []byte("img"),
 	INPUTTag:    []byte("input"),
 	LINKTag:     []byte("link"),
@@ -103,6 +110,7 @@ var TagBytes = [][]byte {
 	BLOCKQUOTETag: []byte("blockquote"),
 	BODYTag:     []byte("body"),
 	BUTTONTag:   []byte("button"),
+	CAPTIONTag:  []byte("caption"),
 	COLGROUPTag: []byte("colgroup"),
 	DDTag:       []byte("dd"),
 	DIVTag:      []byte("div"),
@@ -121,11 +129,11 @@ var TagBytes = [][]byte {
 	HEADTag:     []byte("head"),
 	HEADERTag:   []byte("header"),
 	HGROUPTag:   []byte("hgroup"),
-	HRTag:       []byte("hr"),
 	HTMLTag:     []byte("html"),
 	LABELTag:    []byte("label"),
 	LITag:       []byte("li"),
 	MAINTag:     []byte("main"),
+	MAPTag:      []byte("map"),
 	NAVTag:      []byte("nav"),
 	NOSCRIPTTag: []byte("noscript"),
 	OBJECTTag:   []byte("object"),

@@ -9,7 +9,7 @@ func ExampleHtml() {
 	fmt.Println(NodeToHTMLBytes(h, RenderOptions{DisableOmit: true, SortAttr: true}))
 	// OUTPUT:
 	// <!DOCTYPE html>
-	// <html><head><meta charset="utf-8"><meta content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, width=device-width" name="viewport"></head><body></body></html>
+	// <html><head><meta charset="utf-8"></head><body></body></html>
 }
 
 func ExampleOmittedTags_li() {
@@ -22,7 +22,7 @@ func ExampleOmittedTags_li() {
 	fmt.Println(NodeToHTMLBytes(h, RenderOptions{SortAttr: true}))
 	// OUTPUT:
 	// <!DOCTYPE html>
-	// <meta charset="utf-8"><meta content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, width=device-width" name="viewport"><ul><li>Hello<li>World</ul>
+	// <meta charset="utf-8"><ul><li>Hello<li>World</ul>
 }
 
 func ExampleOmittedTags_dtdd() {
@@ -39,7 +39,7 @@ func ExampleOmittedTags_dtdd() {
 	fmt.Println(NodeToHTMLBytes(h, RenderOptions{SortAttr: true}))
 	// OUTPUT:
 	// <!DOCTYPE html>
-	// <meta charset="utf-8"><meta content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, width=device-width" name="viewport"><dl><dt>Hello<dt>Hello<dd>World<dd>World<dt>Hello<dd>World</dl>
+	// <meta charset="utf-8"><dl><dt>Hello<dt>Hello<dd>World<dd>World<dt>Hello<dd>World</dl>
 }
 
 func ExampleOmittedTags_p() {
@@ -54,7 +54,7 @@ func ExampleOmittedTags_p() {
 
 	// OUTPUT:
 	// <!DOCTYPE html>
-	// <meta charset="utf-8"><meta content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, width=device-width" name="viewport"><p>Hello<div>Hello</div><p>World
+	// <meta charset="utf-8"><p>Hello<div>Hello</div><p>World
 }
 
 func ExampleOmittedTags_ruby() {
@@ -71,7 +71,7 @@ func ExampleOmittedTags_ruby() {
 
 	// OUTPUT:
 	// <!DOCTYPE html>
-	// <meta charset="utf-8"><meta content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, width=device-width" name="viewport"><ruby>中文<rb>Hello<rt>zhongwen<rtc>World<rp>World</ruby>
+	// <meta charset="utf-8"><ruby>中文<rb>Hello<rt>zhongwen<rtc>World<rp>World</ruby>
 }
 
 func ExampleOmittedTags_optgroup() {
@@ -90,14 +90,14 @@ func ExampleOmittedTags_optgroup() {
 
 	// OUTPUT:
 	// <!DOCTYPE html>
-	// <meta charset="utf-8"><meta content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, width=device-width" name="viewport"><select><option value="W2">w2<optgroup label="hello"><option value="W1">w1<optgroup label="world"><option value="H1">h1</select>
+	// <meta charset="utf-8"><select><option value="W2">w2<optgroup label="hello"><option value="W1">w1<optgroup label="world"><option value="H1">h1</select>
 }
 
 func ExampleOmittedTags_table() {
 	h := HTML("")
 	body := h.Body()
 	body.Child(TABLE(
-		COLGROUP(
+		COLGROUP(0,
 			COL(2), COL(1),
 		),
 		THEAD(
@@ -112,5 +112,5 @@ func ExampleOmittedTags_table() {
 
 	// OUTPUT:
 	// <!DOCTYPE html>
-	// <meta charset="utf-8"><meta content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, width=device-width" name="viewport"><table><col span="2"><col><thead><tr><th><tbody><tr><td><tfoot></table>
+	// <meta charset="utf-8"><table><col span="2"><col><thead><tr><th><tbody><tr><td><tfoot></table>
 }
