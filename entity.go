@@ -9,41 +9,41 @@ import (
 // HTML Entities
 var (
 	// HTML Character Entity copyright
-	COPY = HTMLBytes("&copy;")
+	COPY = HTMLNode("&copy;")
 	// HTML Character Entity ampersand
-	AMP = HTMLBytes("&amp;")
+	AMP = HTMLNode("&amp;")
 	// HTML Character Entity less than
-	LT = HTMLBytes("&lt;")
+	LT = HTMLNode("&lt;")
 	// HTML Character Entity greater than
-	GT = HTMLBytes("&gt;")
+	GT = HTMLNode("&gt;")
 	// HTML Character Entity cent
-	CENT = HTMLBytes("&cent;")
+	CENT = HTMLNode("&cent;")
 	// HTML Character Entity pound
-	POUND = HTMLBytes("&pound;")
+	POUND = HTMLNode("&pound;")
 	// HTML Character Entity yen
-	YEN = HTMLBytes("&yen;")
+	YEN = HTMLNode("&yen;")
 	// HTML Character Entity euro
-	EURO = HTMLBytes("&euro;")
+	EURO = HTMLNode("&euro;")
 	// HTML Character Entity registered trademark
-	REG = HTMLBytes("&reg;")
+	REG = HTMLNode("&reg;")
 	// HTML Character Entity non-breaking space
-	NBSP  = HTMLBytes("&nbsp;")
-	TIMES = HTMLBytes("&times;")
-	LAQUO = HTMLBytes("&laquo;")
-	RAQUO = HTMLBytes("&raquo;")
+	NBSP  = HTMLNode("&nbsp;")
+	TIMES = HTMLNode("&times;")
+	LAQUO = HTMLNode("&laquo;")
+	RAQUO = HTMLNode("&raquo;")
 
 	//TODO define all entities
 )
 
-var nePrefix = HTMLBytes("&#")
+var nePrefix = HTMLNode("&#")
 
 // NumEnt returns HTMLBytes a numerical entity.
-func NumEnt(num int) HTMLBytes {
+func NumEnt(num int) HTMLNode {
 	var b villa.ByteSlice
 
 	b.Write([]byte(nePrefix))
 	b.WriteString(strconv.Itoa(num))
 	b.WriteByte(';')
 
-	return HTMLBytes(b)
+	return HTMLNode(b)
 }

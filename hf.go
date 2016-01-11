@@ -1,22 +1,21 @@
 package hf
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"sort"
-	"strings"
 	"strconv"
 
+	"github.com/golangplus/bytes"
+	"github.com/golangplus/strings"
+
 	. "github.com/daviddengcn/go-html-frame/htmldef"
-	"github.com/daviddengcn/go-villa"
 )
 
 type RenderOptions struct {
-	Ident       HTMLBytes
+	Ident       HTMLNode
 	DisableOmit bool
 	// Sort attributes names before export.
-	// This is useful for testing because otherwise the exported attributes are random.
+	// This is useful for testing because otherwise the exported attributes could be random.
 	SortAttr bool
 }
 
@@ -33,73 +32,34 @@ type Writer interface {
 	WriteString(string) (int, error)
 }
 
-type URL []byte
-
 // Text
-type HTMLBytes []byte
+type HTMLNode string
 
-var _ Node = HTMLBytes{}
+var _ Node = HTMLNode("")
 
-func (h HTMLBytes) String() string {
-	return string(h)
+func (h HTMLNode) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
+	b.WriteString(string(h))
 }
 
-func (h HTMLBytes) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
-	b.Write([]byte(h))
+func (h HTMLNode) WriteRaw(b Writer) {
+	b.WriteString(string(h))
 }
 
-func (h HTMLBytes) Type() TagType {
+func (h HTMLNode) Type() TagType {
 	return TextType
 }
 
-func NodeToHTMLBytes(el Node, opt RenderOptions) HTMLBytes {
-	var b villa.ByteSlice
+func NodeToHTMLBytes(el Node, opt RenderOptions) HTMLNode {
+	var b bytesp.ByteSlice
 	el.WriteTo(&b, opt, nil, 0)
-	return HTMLBytes(b)
-}
-
-type Attributes map[string]HTMLBytes
-
-func (attrs Attributes) WriteTo(b Writer, sortAttr bool) {
-	if sortAttr {
-		names := make([]string, 0, len(attrs))
-		for name := range attrs {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-
-		for _, name := range names {
-			value := attrs[name]
-
-			b.WriteByte(' ')
-			b.WriteString(name)
-			if len(value) > 0 {
-				b.WriteByte('=')
-				b.WriteByte('"')
-				b.Write([]byte(value))
-			}
-			b.WriteByte('"')
-		}
-		return
-	}
-
-	for name, value := range attrs {
-		b.WriteByte(' ')
-		b.WriteString(name)
-		if len(value) > 0 {
-			b.WriteByte('=')
-			b.WriteByte('"')
-			b.Write([]byte(value))
-		}
-		b.WriteByte('"')
-	}
+	return HTMLNode(b)
 }
 
 // An HTML void element
 type Void struct {
 	tagType    TagType
 	attributes Attributes
-	classes    []HTMLBytes
+	classes    HTMLNodeSet
 }
 
 var _ Node = (*Void)(nil)
@@ -111,14 +71,14 @@ func (v *Void) Type() TagType {
 // Implementation of Node.WriteTo. This will be called to generate open tags of both void and normal elements
 func (v *Void) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
 	b.WriteByte('<')
-	b.Write(TagBytes[v.tagType])
+	b.WriteString(TagNames[v.tagType])
 
 	if len(v.classes) > 0 {
 		b.WriteString(` class="`)
-		b.Write([]byte(v.classes[0]))
+		v.classes[0].WriteRaw(b)
 		for i, n := 1, len(v.classes); i < n; i++ {
 			b.WriteByte(' ')
-			b.Write([]byte(v.classes[i]))
+			v.classes[i].WriteRaw(b)
 		}
 		b.WriteByte('"')
 	}
@@ -127,12 +87,12 @@ func (v *Void) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex 
 	b.WriteByte('>')
 }
 
-func (v *Void) Name() HTMLBytes {
-	return HTMLBytes(TagBytes[v.tagType])
+func (v *Void) Name() HTMLNode {
+	return HTMLNode(TagNames[v.tagType])
 }
 
 func (v *Void) Attr(name string, value string) *Void {
-	return v.attrOfBytes(name, attrEscaper(value))
+	return v.attrOfBytes(attrNameEscape(name), attrEscaper(value))
 }
 
 func (v *Void) AttrIfNotEmpty(name, value string) *Void {
@@ -142,32 +102,26 @@ func (v *Void) AttrIfNotEmpty(name, value string) *Void {
 	return v.Attr(name, value)
 }
 
-func (v *Void) attrOfBytes(name string, value HTMLBytes) *Void {
+func (v *Void) attrOfBytes(name, value HTMLNode) *Void {
 	if len(name) == 0 {
 		// ignore empty name
 		return v
 	}
-	name = strings.ToLower(name)
 
 	if name == "class" {
-		classes := bytes.Split([]byte(value), []byte{' '})
-
-		v.classes = make([]HTMLBytes, 0, len(classes))
-		for _, class := range classes {
-			if len(class) == 0 {
-				// continuous spaces
-				continue
+		v.classes = v.classes[:0]
+		stringsp.CallbackFields(string(value), func(n int) {
+			if cap(v.classes) < n {
+				v.classes = make([]HTMLNode, 0, n)
 			}
-			v.classes = append(v.classes, HTMLBytes(class))
-		}
+		}, func(f string) {
+			v.classes = append(v.classes, HTMLNode(f))
+		})
 		return v
 	}
 
 	// TODO ignore invalid attribute name
-	if v.attributes == nil {
-		v.attributes = make(Attributes)
-	}
-	v.attributes[name] = value
+	v.attributes.Put(name, value)
 	return v
 }
 
@@ -188,27 +142,18 @@ func (v *Void) NonEmptyAttr(name, value string) *Void {
 
 func (v *Void) AddClass(classes ...string) *Void {
 	for _, cls := range classes {
-		clsBytes := attrEscaper(cls)
-		if findStrInArr(clsBytes, v.classes) >= 0 {
-			continue
-		}
-		v.classes = append(v.classes, clsBytes)
+		v.classes.Put(attrEscaper(cls))
 	}
 
 	return v
 }
 
-func (t *Void) DelClass(classes ...string) *Void {
+func (v *Void) DelClass(classes ...string) *Void {
 	for _, cls := range classes {
-		clsBytes := attrEscaper(cls)
-		i := findStrInArr(clsBytes, t.classes)
-		if i >= 0 {
-			copy(t.classes[i:], t.classes[i+1:])
-			t.classes = t.classes[:len(t.classes)-1]
-		}
+		v.classes.Del(attrEscaper(cls))
 	}
 
-	return t
+	return v
 }
 
 func (t *Void) ID(id string) *Void {
@@ -267,7 +212,7 @@ func shouldNewLine(e *Element) bool {
 			return false
 		}
 
-		t, ok := e.children[0].(HTMLBytes)
+		t, ok := e.children[0].(HTMLNode)
 		if !ok {
 			return false
 		}
@@ -294,7 +239,7 @@ func (e *Element) canOmitStartTag(parent *Element, childIndex int) bool {
 		}
 		switch e.children[0].Type() {
 		case TextType:
-			return !startWithSpace(e.children[0].(HTMLBytes))
+			return !startWithSpace(e.children[0].(HTMLNode))
 
 		case METATag, LINKTag, SCRIPTTag, TEMPLATETag:
 			return false
@@ -433,7 +378,7 @@ func (e *Element) canOmitEndTag(parent *Element, childIndex int) bool {
 		}
 
 		if parent.children[childIndex+1].Type() == TextType {
-			return !startWithSpace(e.children[childIndex+1].(HTMLBytes))
+			return !startWithSpace(e.children[childIndex+1].(HTMLNode))
 		}
 
 		return true
@@ -501,22 +446,21 @@ func (e *Element) WriteTo(b Writer, opt RenderOptions, parent *Element, childInd
 		return
 	}
 
-	b.WriteByte('<')
-	b.WriteByte('/')
-	b.Write(TagBytes[e.tagType])
+	b.WriteString("</")
+	b.WriteString(TagNames[e.tagType])
 	b.WriteByte('>')
 }
 
-func T(text string) HTMLBytes {
+func T(text string) HTMLNode {
 	return htmlEscaper(text)
 }
 
-func Tf(format string, args ...interface{}) HTMLBytes {
+func Tf(format string, args ...interface{}) HTMLNode {
 	return htmlEscaper(fmt.Sprintf(format, args...))
 }
 
 var (
-	doctypeBytes = HTMLBytes("<!DOCTYPE html>")
+	doctypeNode = "<!DOCTYPE html>"
 )
 
 type Html struct {
@@ -527,7 +471,7 @@ var _ Node = Html{}
 
 // Implementation of Node interface
 func (h Html) WriteTo(b Writer, opt RenderOptions, parent *Element, childIndex int) {
-	b.Write(doctypeBytes)
+	b.WriteString(doctypeNode)
 	b.WriteByte('\n')
 
 	h.Element.WriteTo(b, opt, parent, childIndex)

@@ -12,7 +12,7 @@ func AREA(href, alt string, shape string, coords []int) *Void {
 	if len(coords) > 0 {
 		area.attrOfBytes("coords", intSliceToBytes(coords))
 	}
-	
+
 	return area
 }
 
@@ -51,8 +51,8 @@ func EMBED(src URL, tp string, width, height int) *Void {
 		tagType: EMBEDTag,
 	}).AttrIfNotEmpty("type", tp)
 
-	v.attrOfBytes("src", HTMLBytes(src))
-	
+	v.attrOfBytes("src", HTMLNode(src))
+
 	if width >= 0 {
 		v.attrOfBytes("width", itoaBytes(width))
 	}
@@ -70,10 +70,10 @@ func HR() *Void {
 	}
 }
 
-func IMG(src string) *Void {
+func IMG(src URL, alt string) *Void {
 	return (&Void{
 		tagType: IMGTag,
-	}).Attr("src", src)
+	}).attrOfBytes("src", HTMLNode(src)).AttrIfNotEmpty("alt", alt)
 }
 
 func INPUT(tp, name, value string) *Void {
@@ -154,7 +154,7 @@ func CAPTION(children ...Node) *Element {
 }
 
 // The colgroup element
-// 
+//
 // If span > 0, cols are ignored. Otherwise, cols (col tags) are appended as children.
 func COLGROUP(span int, cols ...*Void) *Element {
 	colgroup := &Element{
@@ -371,7 +371,7 @@ func SCRIPT(src string, content string) *Element {
 	}
 
 	if content != "" {
-		t.Child(HTMLBytes(content))
+		t.Child(HTMLNode(content))
 	}
 
 	return t
